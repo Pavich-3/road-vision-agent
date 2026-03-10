@@ -16,23 +16,18 @@ class FileDatasource:
         self.acc_file_obj = None
         self.gps_file_obj = None
 
-    def startReading(self, *args, **kwargs):
-        self.acc_file_obj = open(self.acc_file)
-        self.gps_file_obj = open(self.gps_file)
-
-        self.acc_reader = reader(self.acc_file_obj)
-        self.gps_reader = reader(self.gps_file_obj)
-
-    def stopReading(self, *args, **kwargs):
-        if self.acc_file_obj:
-            self.acc_file_obj.close()
-
-        if self.gps_file_obj:
-            self.gps_file_obj.close()
-
     def read(self) -> AggregatedData:
-        acc_row = next(self.acc_reader)
-        gps_row = next(self.gps_reader)
+        try:
+            acc_row = next(self.acc_reader)
+        except StopIteration:
+            self._restart_acc_reader()
+            acc_row = next(self.acc_reader)
+
+        try:
+            gps_row = next(self.gps_reader)
+        except StopIteration:
+            self._restart_gps_reader()
+            gps_row = next(self.gps_reader)
 
         accelerometer = Accelerometer(
             x=int(acc_row[0]),
@@ -50,3 +45,32 @@ class FileDatasource:
             gps=gps,
             time=datetime.now()
         )
+
+    def startReading(self, *args, **kwargs):
+        self.acc_file_obj = open(self.acc_file)
+        self.gps_file_obj = open(self.gps_file)
+
+        self.acc_reader = reader(self.acc_file_obj)
+        self.gps_reader = reader(self.gps_file_obj)
+
+        next(self.acc_reader, None)
+        next(self.gps_reader, None)
+
+    def stopReading(self, *args, **kwargs):
+        if self.acc_file_obj:
+            self.acc_file_obj.close()
+            self.acc_file_obj = None
+
+        if self.gps_file_obj:
+            self.gps_file_obj.close()
+            self.gps_file_obj = None
+
+    def _restart_acc_reader(self):
+        self.acc_file_obj.seek(0)
+        self.acc_reader = reader(self.acc_file_obj)
+        next(self.acc_reader, None)
+
+    def _restart_gps_reader(self):
+        self.gps_file_obj.seek(0)
+        self.gps_reader = reader(self.gps_file_obj)
+        next(self.gps_reader, None)
