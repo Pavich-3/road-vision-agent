@@ -1,5 +1,6 @@
 from paho.mqtt import client as mqtt_client
 import time
+from schema.parking_schema import ParkingSchema
 from schema.aggregated_data_schema import AggregatedDataSchema
 from file_datasource import FileDatasource
 import config
@@ -27,26 +28,24 @@ def connect_mqtt(broker, port):
 def publish(client, topic, datasource, delay):
     datasource.startReading()
     print(f"Publishing to topic `{topic}` every {delay} seconds")
+
     while True:
         time.sleep(delay)
+
         data = datasource.read()
         msg = AggregatedDataSchema().dumps(data)
-        result = client.publish(topic, msg)
-        # result: [0, 1]
-        status = result[0]
+        client.publish(topic, msg)
+        print(f"Sent to `{topic}`: {msg}")
 
-        if status == 0:
-            print(f"Sent to `{topic}`: {msg}")
-        else:
-            print(f"Failed to send message to topic {topic}")
+        parking_data = datasource.read_parking()
+        parking_msg = ParkingSchema().dumps(parking_data)
+        client.publish("parking_data_topic", parking_msg)
+        print(f"Sent to `parking_data_topic`: {parking_msg}")
 
 
 def run():
-    # Prepare mqtt client
     client = connect_mqtt(config.MQTT_BROKER_HOST, config.MQTT_BROKER_PORT)
-    # Prepare datasource
-    datasource = FileDatasource("data/accelerometer.csv", "data/gps.csv")
-    # Infinity publish data
+    datasource = FileDatasource("data/accelerometer.csv", "data/gps.csv", "data/parking.csv")
     try:
         publish(client, config.MQTT_TOPIC, datasource, config.DELAY)
     except KeyboardInterrupt:
