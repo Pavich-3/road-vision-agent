@@ -1,4 +1,4 @@
-from agent.src.schema.gps_schema import GpsSchema
+from gps_schema import GpsSchema
 from marshmallow import Schema, fields
 
 

@@ -1,9 +1,9 @@
 import os
 
 
-def try_parse(type, value: str):
+def try_parse(type_, value: str):
     try:
-        return type(value)
+        return type_(value)
     except Exception:
         return None
 

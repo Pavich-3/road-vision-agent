@@ -1,5 +1,4 @@
 from paho.mqtt import client as mqtt_client
-import json
 import time
 from schema.aggregated_data_schema import AggregatedDataSchema
 from file_datasource import FileDatasource
@@ -8,14 +7,14 @@ import config
 
 def connect_mqtt(broker, port):
     """Create MQTT client"""
-    print(f"CONNECT TO {broker}:{port}")
+    print(f"Connecting to {broker}:{port}...")
 
     def on_connect(client, userdata, flags, rc):
         if rc == 0:
-            print(f"Connected to MQTT Broker ({broker}:{port})!")
+            print(f"Connected to MQTT Broker ({broker}:{port})")
         else:
-            print("Failed to connect {broker}:{port}, return code %d\n", rc)
-            exit(rc) # Stop execution
+            print(f"Failed to connect {broker}:{port}, return code {rc}")
+            exit(rc)  # Stop execution
 
     client = mqtt_client.Client()
     client.on_connect = on_connect
@@ -27,6 +26,7 @@ def connect_mqtt(broker, port):
 
 def publish(client, topic, datasource, delay):
     datasource.startReading()
+    print(f"Publishing to topic `{topic}` every {delay} seconds")
     while True:
         time.sleep(delay)
         data = datasource.read()
@@ -36,8 +36,7 @@ def publish(client, topic, datasource, delay):
         status = result[0]
 
         if status == 0:
-            pass
-            # print(f"Send `{msg}` to topic `{topic}`")
+            print(f"Sent to `{topic}`: {msg}")
         else:
             print(f"Failed to send message to topic {topic}")
 
@@ -48,7 +47,15 @@ def run():
     # Prepare datasource
     datasource = FileDatasource("data/accelerometer.csv", "data/gps.csv")
     # Infinity publish data
-    publish(client, config.MQTT_TOPIC, datasource, config.DELAY)
+    try:
+        publish(client, config.MQTT_TOPIC, datasource, config.DELAY)
+    except KeyboardInterrupt:
+        print("Interrupted by user, stopping...")
+    finally:
+        datasource.stopReading()
+        client.loop_stop()
+        client.disconnect()
+        print("Stopped.")
 
 
 if __name__ == '__main__':
